@@ -1,30 +1,64 @@
 import os
 import sys
-from sqlalchemy.orm import declarative_base, Mapped, mapped_column
+from typing import List
+from sqlalchemy.orm import declarative_base, Mapped, mapped_column, relationship
+from sqlalchemy import ForeignKey
 from sqlalchemy import create_engine
-from eralchemy2 import render_er
-
+from eralchemy import render_er
+from typing import List
 Base = declarative_base()
 
-class Person(Base):
-    __tablename__ = 'person'
-    # Here we define columns for the table person
-    # Notice that each column is also a normal Python instance attribute.
+class User(Base):
+    __tablename__ = 'user'
     id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(nullable=False)
+    username: Mapped[str] = mapped_column(nullable=False)
+    firstname: Mapped[str] = mapped_column(nullable=False)
+    lastname: Mapped[str] = mapped_column(nullable=False)
+    email: Mapped[str] = mapped_column(nullable=False)
+    
+    followers: Mapped[List["Follower"]] = relationship(back_populates="user")
+    comments: Mapped[List["Comment"]] = relationship(back_populates="author")
+    posts: Mapped[List["Post"]] = relationship(back_populates="user")
 
-class Address(Base):
-    __tablename__ = 'address'
-    # Here we define columns for the table address.
-    # Notice that each column is also a normal Python instance attribute.
+class Follower(Base):
+    __tablename__ = 'follower'
     id: Mapped[int] = mapped_column(primary_key=True)
-    street_name: Mapped[str]
-    street_number: Mapped[str]
-    post_code: Mapped[str] = mapped_column(nullable=False)
+    user_from_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
+    
+    user: Mapped["User"] = relationship(backref="followers")
 
-    def to_dict(self):
-        return {}
 
+class Post(Base):
+    __tablename__ = 'post'
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
+    
+    user: Mapped["User"] = relationship(back_populates="posts")
+    comments: Mapped[List["Comment"]] = relationship(back_populates="post")
+    media: Mapped[List["Media"]] = relationship(back_populates="post")
+
+class Media(Base):
+    __tablename__ = 'media'
+    id: Mapped[int] = mapped_column(primary_key=True)
+    type: Mapped[str] = mapped_column(nullable=False)
+    url: Mapped[str] = mapped_column(nullable=False)
+
+    post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
+    post: Mapped["Post"] = relationship(back_populates="media")
+
+
+    post_id: Mapped["id"] = mapped_column(ForeignKey("post.id"));
+class Comment(Base):
+    __tablename__ = 'comment'
+    id: Mapped[int] = mapped_column(primary_key=True)
+    comment_text: Mapped[str] = mapped_column(nullable=False)
+    author_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
+    post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
+    
+    author: Mapped["User"] = relationship(back_populates="comments")
+    post: Mapped["Post"] = relationship(back_populates="comments")
+
+# users: Mapped["User"] = relationship(back_populates="addresses")    
 ## Draw from SQLAlchemy base
 try:
     result = render_er(Base, 'diagram.png')
